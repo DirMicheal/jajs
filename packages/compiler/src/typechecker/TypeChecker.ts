@@ -46,6 +46,9 @@ export class TypeChecker {
   private symbolTable: SymbolTable;
   private currentClass: ClassDeclaration | null = null;
   private currentMethod: MethodDeclaration | null = null;
+  private classHierarchy: Map<string, string | null> = new Map();
+  private classDeclarations: Map<string, ClassDeclaration> = new Map();
+  private interfaceDeclarations: Map<string, InterfaceDeclaration> = new Map();
 
   constructor() {
     this.symbolTable = new SymbolTable();
@@ -67,6 +70,8 @@ export class TypeChecker {
     }
     for (const decl of ast.declarations) {
       if (decl.type === 'ClassDeclaration') {
+        this.classDeclarations.set(decl.name, decl);
+        this.classHierarchy.set(decl.name, decl.superClass?.name || null);
         if (!globalScope.has(decl.name)) {
           globalScope.define({
             name: decl.name,
@@ -76,6 +81,7 @@ export class TypeChecker {
           });
         }
       } else if (decl.type === 'InterfaceDeclaration') {
+        this.interfaceDeclarations.set(decl.name, decl);
         if (!globalScope.has(decl.name)) {
           globalScope.define({
             name: decl.name,
@@ -86,6 +92,47 @@ export class TypeChecker {
         }
       }
     }
+  }
+
+  private isSubclassOf(derivedName: string, baseName: string): boolean {
+    if (derivedName === baseName) return true;
+    if (baseName === 'Object') return true;
+    let current: string | null | undefined = derivedName;
+    const visited = new Set<string>();
+    while (current) {
+      if (visited.has(current)) break;
+      visited.add(current);
+      if (current === baseName) return true;
+      current = this.classHierarchy.get(current);
+    }
+    return false;
+  }
+
+  private isTypeAssignable(target: TypeInfo, source: TypeInfo): boolean {
+    if (isAssignable(target, source)) return true;
+    if (!target.isArray && !source.isArray) {
+      if (this.isSubclassOf(source.name, target.name)) return true;
+    }
+    return false;
+  }
+
+  private findClassMember(className: string, memberName: string): FieldDeclaration | MethodDeclaration | null {
+    let currentClass: ClassDeclaration | null | undefined = this.classDeclarations.get(className);
+    const visited = new Set<string>();
+    while (currentClass && !visited.has(currentClass.name)) {
+      visited.add(currentClass.name);
+      for (const member of currentClass.members) {
+        if (member.name === memberName) {
+          return member;
+        }
+      }
+      if (currentClass.superClass) {
+        currentClass = this.classDeclarations.get(currentClass.superClass.name);
+      } else {
+        break;
+      }
+    }
+    return null;
   }
 
   private checkCompilationUnit(ast: CompilationUnit): void {
@@ -188,7 +235,7 @@ export class TypeChecker {
     const fieldType = this.typeRefToInfo(node.fieldType);
     if (node.initializer) {
       const initType = this.checkExpression(node.initializer);
-      if (!isAssignable(fieldType, initType)) {
+      if (!this.isTypeAssignable(fieldType, initType)) {
         throw new TypeCheckerError(
           `Cannot assign '${this.typeName(initType)}' to field '${node.name}' of type '${this.typeName(fieldType)}'`,
           node.initializer.pos.line,
@@ -282,7 +329,7 @@ export class TypeChecker {
 
     if (node.initializer) {
       const initType = this.checkExpression(node.initializer);
-      if (!isAssignable(varType, initType)) {
+      if (!this.isTypeAssignable(varType, initType)) {
         throw new TypeCheckerError(
           `Cannot assign '${this.typeName(initType)}' to variable '${node.name}' of type '${this.typeName(varType)}'`,
           node.initializer.pos.line,
@@ -373,7 +420,7 @@ export class TypeChecker {
           node.argument.pos.column,
         );
       }
-      if (!isAssignable(returnType, argType)) {
+      if (!this.isTypeAssignable(returnType, argType)) {
         throw new TypeCheckerError(
           `Cannot return '${this.typeName(argType)}' from method returning '${this.typeName(returnType)}'`,
           node.argument.pos.line,
@@ -438,7 +485,7 @@ export class TypeChecker {
     const rightType = this.checkExpression(node.right);
 
     if (node.operator === '=') {
-      if (!isAssignable(leftType, rightType)) {
+      if (!this.isTypeAssignable(leftType, rightType)) {
         throw new TypeCheckerError(
           `Cannot assign '${this.typeName(rightType)}' to '${this.typeName(leftType)}'`,
           node.pos.line,
@@ -566,7 +613,7 @@ export class TypeChecker {
         for (let i = 0; i < node.arguments.length; i++) {
           const argType = this.checkExpression(node.arguments[i]);
           const paramType = symbol.parameters[i].type;
-          if (!isAssignable(paramType, argType)) {
+          if (!this.isTypeAssignable(paramType, argType)) {
             throw new TypeCheckerError(
               `Argument ${i + 1} of '${node.callee.name}' expects '${this.typeName(paramType)}', got '${this.typeName(argType)}'`,
               node.arguments[i].pos.line,
@@ -590,6 +637,58 @@ export class TypeChecker {
         }
         if (methodName === 'length' && calleeType.isArray) {
           return createType('int', false, true);
+        }
+
+        if (node.callee.object.type === 'Identifier') {
+          const className = node.callee.object.name;
+          const classSym = this.symbolTable.getGlobalScope().resolve(className);
+          if (classSym && classSym.kind === 'class') {
+            const member = this.findClassMember(className, methodName);
+            if (member && member.type === 'MethodDeclaration') {
+              if (node.arguments.length !== member.parameters.length) {
+                throw new TypeCheckerError(
+                  `Method '${className}.${methodName}' expects ${member.parameters.length} arguments, got ${node.arguments.length}`,
+                  node.pos.line,
+                  node.pos.column,
+                );
+              }
+              for (let i = 0; i < node.arguments.length; i++) {
+                const argType = this.checkExpression(node.arguments[i]);
+                const paramType = this.typeRefToInfo(member.parameters[i].paramType);
+                if (!this.isTypeAssignable(paramType, argType)) {
+                  throw new TypeCheckerError(
+                    `Argument ${i + 1} of '${className}.${methodName}' expects '${this.typeName(paramType)}', got '${this.typeName(argType)}'`,
+                    node.arguments[i].pos.line,
+                    node.arguments[i].pos.column,
+                  );
+                }
+              }
+              return this.typeRefToInfo(member.returnType);
+            }
+          }
+        }
+
+        const member = this.findClassMember(calleeType.name, methodName);
+        if (member && member.type === 'MethodDeclaration') {
+          if (node.arguments.length !== member.parameters.length) {
+            throw new TypeCheckerError(
+              `Method '${methodName}' expects ${member.parameters.length} arguments, got ${node.arguments.length}`,
+              node.pos.line,
+              node.pos.column,
+            );
+          }
+          for (let i = 0; i < node.arguments.length; i++) {
+            const argType = this.checkExpression(node.arguments[i]);
+            const paramType = this.typeRefToInfo(member.parameters[i].paramType);
+            if (!this.isTypeAssignable(paramType, argType)) {
+              throw new TypeCheckerError(
+                `Argument ${i + 1} of '${methodName}' expects '${this.typeName(paramType)}', got '${this.typeName(argType)}'`,
+                node.arguments[i].pos.line,
+                node.arguments[i].pos.column,
+              );
+            }
+          }
+          return this.typeRefToInfo(member.returnType);
         }
       }
     }
@@ -647,6 +746,18 @@ export class TypeChecker {
             return fieldSymbol.returnType;
           }
           scope = scope.getParent();
+        }
+      }
+
+      if (this.classDeclarations.has(objectType.name)) {
+        const member = this.findClassMember(objectType.name, propName);
+        if (member) {
+          if (member.type === 'FieldDeclaration') {
+            return this.typeRefToInfo(member.fieldType);
+          }
+          if (member.type === 'MethodDeclaration') {
+            return this.typeRefToInfo(member.returnType);
+          }
         }
       }
     }
@@ -748,7 +859,7 @@ export class TypeChecker {
     const firstType = this.checkExpression(node.elements[0]);
     for (let i = 1; i < node.elements.length; i++) {
       const elemType = this.checkExpression(node.elements[i]);
-      if (!isAssignable(firstType, elemType) && !isAssignable(elemType, firstType)) {
+      if (!this.isTypeAssignable(firstType, elemType) && !this.isTypeAssignable(elemType, firstType)) {
         throw new TypeCheckerError(
           `Inconsistent array element types: '${this.typeName(firstType)}' and '${this.typeName(elemType)}'`,
           node.elements[i].pos.line,
