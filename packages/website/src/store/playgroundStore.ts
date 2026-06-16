@@ -14,6 +14,8 @@ interface PlaygroundState {
   loadExample: (id: string) => void;
 }
 
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
 export const usePlaygroundStore = create<PlaygroundState>((set, get) => ({
   jajsCode: EXAMPLES[0].code,
   jsOutput: '',
@@ -24,10 +26,21 @@ export const usePlaygroundStore = create<PlaygroundState>((set, get) => ({
 
   setJajsCode: (code: string) => {
     set({ jajsCode: code });
-    get().compile();
+    
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+    }
+    debounceTimer = setTimeout(() => {
+      get().compile();
+    }, 500);
   },
 
   compile: () => {
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+      debounceTimer = null;
+    }
+    
     const { jajsCode } = get();
     let compiler = get().compiler;
 
@@ -62,6 +75,10 @@ export const usePlaygroundStore = create<PlaygroundState>((set, get) => ({
   loadExample: (id: string) => {
     const example = EXAMPLES.find(e => e.id === id);
     if (example) {
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+        debounceTimer = null;
+      }
       set({
         jajsCode: example.code,
         selectedExampleId: id,

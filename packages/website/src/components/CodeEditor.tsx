@@ -34,13 +34,18 @@ const jajsTypes = [
 export function CodeEditor({ value, onChange, language, readOnly = false, errorLine }: CodeEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
+  const isEditingRef = useRef(false);
 
   useEffect(() => {
     if (!containerRef.current) return;
 
     const updateListener = EditorView.updateListener.of((update) => {
       if (update.docChanged && onChange) {
+        isEditingRef.current = true;
         onChange(update.state.doc.toString());
+        setTimeout(() => {
+          isEditingRef.current = false;
+        }, 100);
       }
     });
 
@@ -62,6 +67,12 @@ export function CodeEditor({ value, onChange, language, readOnly = false, errorL
           height: '100%',
           backgroundColor: 'rgba(10, 14, 39, 0.6) !important',
         },
+        '.cm-scroller': {
+          overflow: 'auto',
+          fontFamily: 'JetBrains Mono, Fira Code, Menlo, Monaco, Consolas, monospace',
+          fontSize: '14px',
+          lineHeight: '1.6',
+        },
         '.cm-content': {
           padding: '16px 0',
         },
@@ -71,6 +82,7 @@ export function CodeEditor({ value, onChange, language, readOnly = false, errorL
         '.cm-gutters': {
           backgroundColor: 'rgba(10, 14, 39, 0.8) !important',
           borderRight: '1px solid rgba(0, 212, 255, 0.1) !important',
+          userSelect: 'none',
         },
       }),
     ];
@@ -97,15 +109,18 @@ export function CodeEditor({ value, onChange, language, readOnly = false, errorL
   }, [language, readOnly, errorLine]);
 
   useEffect(() => {
-    if (viewRef.current) {
+    if (viewRef.current && !isEditingRef.current) {
       const currentValue = viewRef.current.state.doc.toString();
       if (currentValue !== value) {
+        const mainSelection = viewRef.current.state.selection.main;
         viewRef.current.dispatch({
           changes: {
             from: 0,
             to: currentValue.length,
             insert: value,
           },
+          selection: { anchor: Math.min(mainSelection.anchor, value.length) },
+          scrollIntoView: true,
         });
       }
     }

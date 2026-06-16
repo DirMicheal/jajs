@@ -107,7 +107,7 @@ export function Playground() {
                   .jajs
                 </span>
               </div>
-              <div className="flex-1 p-0">
+              <div className="flex-1 p-0 min-h-0 overflow-hidden">
                 <CodeEditor
                   value={jajsCode}
                   onChange={setJajsCode}
@@ -163,7 +163,7 @@ export function Playground() {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex-1 p-0">
+                  <div className="flex-1 p-0 min-h-0 overflow-hidden">
                     <CodeEditor
                       value={jsOutput}
                       language="javascript"
