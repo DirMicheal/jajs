@@ -1,0 +1,19 @@
+{
+  "name": "jajs",
+  "private": true,
+  "version": "0.1.0",
+  "description": "JaJS - Java syntax that compiles to JavaScript",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build:compiler": "pnpm --filter @jajs/compiler build",
+    "dev:website": "pnpm --filter @jajs/website dev",
+    "build:website": "pnpm --filter @jajs/website build",
+    "build": "pnpm build:compiler && pnpm build:website",
+    "dev": "pnpm dev:website"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  }
+}

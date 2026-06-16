@@ -1,0 +1,30 @@
+{
+  "name": "@jajs/compiler",
+  "version": "0.1.0",
+  "description": "JaJS compiler - compiles Java-like syntax to ES6+ JavaScript",
+  "type": "module",
+  "main": "./dist/jajs.umd.js",
+  "module": "./dist/jajs.esm.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/jajs.esm.js",
+      "require": "./dist/jajs.umd.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "dev": "rollup -c -w"
+  },
+  "devDependencies": {
+    "@rollup/plugin-typescript": "^11.1.6",
+    "@rollup/plugin-terser": "^0.4.4",
+    "rollup": "^4.9.0",
+    "tslib": "^2.6.2",
+    "typescript": "^5.3.0"
+  }
+}
