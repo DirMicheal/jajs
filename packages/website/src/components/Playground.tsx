@@ -1,20 +1,17 @@
-import { useEffect } from 'react';
-import { Copy, Check, AlertCircle, Code2, FileCode, Loader2 } from 'lucide-react';
+import { useEffect, useCallback } from 'react';
+import { Copy, Check, AlertCircle, Code2, FileCode, Loader2, Play, RotateCcw } from 'lucide-react';
 import { useState } from 'react';
 import { CodeEditor } from './CodeEditor';
 import { ExampleSelector } from './ExampleSelector';
 import { usePlaygroundStore } from '../store/playgroundStore';
 
 export function Playground() {
-  const { jajsCode, jsOutput, errors, isCompiling, setJajsCode, compile } = usePlaygroundStore();
+  const { jajsCode, jsOutput, errors, isCompiling, hasCompiled, setJajsCode, compile } = usePlaygroundStore();
   const [copied, setCopied] = useState(false);
   const [errorShake, setErrorShake] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      compile();
-    }, 100);
-    return () => clearTimeout(timer);
+    compile();
   }, []);
 
   useEffect(() => {
@@ -25,13 +22,30 @@ export function Playground() {
     }
   }, [errors.length]);
 
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      compile();
+    }
+  }, [compile]);
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
+
   const handleCopy = async () => {
     await navigator.clipboard.writeText(jsOutput);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleReset = () => {
+    setJajsCode('public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, JaJS!");\n    }\n}\n');
+  };
+
   const hasErrors = errors.length > 0;
+  const isEmptyOutput = !hasCompiled && !jsOutput;
 
   return (
     <section id="playground" className="relative py-16 px-6">
@@ -41,7 +55,7 @@ export function Playground() {
             <span className="gradient-text">在线 Playground</span>
           </h2>
           <p className="text-jajs-text-muted text-lg max-w-2xl mx-auto opacity-0 animate-slide-up" style={{ animationDelay: '100ms' }}>
-            左边输入 JaJS 代码，右边实时查看编译后的 JavaScript
+            左边输入 JaJS 代码，点击 <kbd className="px-2 py-0.5 rounded bg-jajs-card border border-jajs-cyan/30 text-jajs-cyan text-sm font-mono">Ctrl + Enter</kbd> 或编译按钮查看结果
           </p>
         </div>
 
@@ -59,32 +73,59 @@ export function Playground() {
                   <AlertCircle className="w-4 h-4 text-red-400" />
                   <span className="text-sm text-red-400">{errors.length} 个错误</span>
                 </>
-              ) : (
+              ) : hasCompiled ? (
                 <>
                   <Check className="w-4 h-4 text-green-400" />
                   <span className="text-sm text-green-400">编译成功</span>
+                </>
+              ) : (
+                <>
+                  <Code2 className="w-4 h-4 text-jajs-text-muted" />
+                  <span className="text-sm text-jajs-text-muted">未编译</span>
                 </>
               )}
             </div>
           </div>
 
-          <button
-            onClick={handleCopy}
-            disabled={!jsOutput || hasErrors}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-jajs-card backdrop-blur-md border border-jajs-cyan/20 text-jajs-text hover:border-jajs-cyan/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {copied ? (
-              <>
-                <Check className="w-4 h-4 text-green-400" />
-                <span className="text-sm text-green-400">已复制</span>
-              </>
-            ) : (
-              <>
-                <Copy className="w-4 h-4 text-jajs-cyan" />
-                <span className="text-sm">复制 JS</span>
-              </>
-            )}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleReset}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-jajs-card backdrop-blur-md border border-jajs-cyan/20 text-jajs-text hover:border-jajs-cyan/50 transition-all duration-200"
+              title="重置代码"
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span className="text-sm">重置</span>
+            </button>
+            <button
+              onClick={compile}
+              disabled={isCompiling}
+              className="flex items-center gap-2 px-5 py-2 rounded-lg bg-gradient-to-r from-jajs-cyan to-jajs-orange text-white font-semibold hover:shadow-lg hover:shadow-jajs-cyan/30 hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+            >
+              {isCompiling ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Play className="w-4 h-4" />
+              )}
+              <span className="text-sm">编译</span>
+            </button>
+            <button
+              onClick={handleCopy}
+              disabled={!jsOutput || hasErrors}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-jajs-card backdrop-blur-md border border-jajs-cyan/20 text-jajs-text hover:border-jajs-cyan/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {copied ? (
+                <>
+                  <Check className="w-4 h-4 text-green-400" />
+                  <span className="text-sm text-green-400">已复制</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4 text-jajs-cyan" />
+                  <span className="text-sm">复制 JS</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         <div className={`relative grid grid-cols-1 lg:grid-cols-2 gap-4 ${errorShake ? 'animate-shake' : ''}`}>
@@ -137,18 +178,18 @@ export function Playground() {
                   .js
                 </span>
               </div>
-              <div className="flex-1 flex flex-col">
+              <div className="flex-1 p-0 min-h-0 overflow-hidden">
                 {hasErrors ? (
-                  <div className="flex-1 overflow-auto p-4 bg-red-500/5">
+                  <div className="h-full overflow-auto p-4 bg-red-500/5">
                     <div className="flex items-start gap-3 mb-3">
                       <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
-                      <div>
+                      <div className="flex-1 min-w-0">
                         <h4 className="text-red-400 font-semibold mb-1">编译错误</h4>
                         <div className="space-y-2">
                           {errors.map((error, index) => (
                             <div
                               key={index}
-                              className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 font-mono text-sm"
+                              className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 font-mono text-sm break-words"
                             >
                               <div className="text-red-400 font-medium">
                                 [{error.type}] Line {error.line}, Column {error.column}
@@ -162,14 +203,19 @@ export function Playground() {
                       </div>
                     </div>
                   </div>
-                ) : (
-                  <div className="flex-1 p-0 min-h-0 overflow-hidden">
-                    <CodeEditor
-                      value={jsOutput}
-                      language="javascript"
-                      readOnly={true}
-                    />
+                ) : isEmptyOutput ? (
+                  <div className="h-full flex items-center justify-center">
+                    <div className="text-center">
+                      <FileCode className="w-12 h-12 text-jajs-text-muted/30 mx-auto mb-3" />
+                      <p className="text-jajs-text-muted text-sm">点击编译按钮或按 Ctrl+Enter 查看输出</p>
+                    </div>
                   </div>
+                ) : (
+                  <CodeEditor
+                    value={jsOutput}
+                    language="javascript"
+                    readOnly={true}
+                  />
                 )}
               </div>
             </div>

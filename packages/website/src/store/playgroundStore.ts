@@ -9,12 +9,11 @@ interface PlaygroundState {
   isCompiling: boolean;
   selectedExampleId: string;
   compiler: Compiler | null;
+  hasCompiled: boolean;
   setJajsCode: (code: string) => void;
   compile: () => void;
   loadExample: (id: string) => void;
 }
-
-let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 export const usePlaygroundStore = create<PlaygroundState>((set, get) => ({
   jajsCode: EXAMPLES[0].code,
@@ -23,24 +22,13 @@ export const usePlaygroundStore = create<PlaygroundState>((set, get) => ({
   isCompiling: false,
   selectedExampleId: EXAMPLES[0].id,
   compiler: null,
+  hasCompiled: false,
 
   setJajsCode: (code: string) => {
-    set({ jajsCode: code });
-    
-    if (debounceTimer) {
-      clearTimeout(debounceTimer);
-    }
-    debounceTimer = setTimeout(() => {
-      get().compile();
-    }, 500);
+    set({ jajsCode: code, hasCompiled: false });
   },
 
   compile: () => {
-    if (debounceTimer) {
-      clearTimeout(debounceTimer);
-      debounceTimer = null;
-    }
-    
     const { jajsCode } = get();
     let compiler = get().compiler;
 
@@ -57,6 +45,7 @@ export const usePlaygroundStore = create<PlaygroundState>((set, get) => ({
         jsOutput: result.output || '',
         errors: result.errors,
         isCompiling: false,
+        hasCompiled: true,
       });
     } catch (e: any) {
       set({
@@ -68,6 +57,7 @@ export const usePlaygroundStore = create<PlaygroundState>((set, get) => ({
           type: 'TypeCheckerError',
         }],
         isCompiling: false,
+        hasCompiled: true,
       });
     }
   },
@@ -75,15 +65,13 @@ export const usePlaygroundStore = create<PlaygroundState>((set, get) => ({
   loadExample: (id: string) => {
     const example = EXAMPLES.find(e => e.id === id);
     if (example) {
-      if (debounceTimer) {
-        clearTimeout(debounceTimer);
-        debounceTimer = null;
-      }
       set({
         jajsCode: example.code,
         selectedExampleId: id,
+        jsOutput: '',
+        errors: [],
+        hasCompiled: false,
       });
-      get().compile();
     }
   },
 }));

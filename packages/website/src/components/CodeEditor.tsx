@@ -65,16 +65,22 @@ export function CodeEditor({ value, onChange, language, readOnly = false, errorL
       EditorView.theme({
         '&': {
           height: '100%',
-          backgroundColor: 'rgba(10, 14, 39, 0.6) !important',
+          minHeight: '100%',
+          backgroundColor: 'transparent !important',
+        },
+        '.cm-editor': {
+          height: '100%',
+          minHeight: '100%',
         },
         '.cm-scroller': {
-          overflow: 'auto',
+          overflow: 'auto !important',
           fontFamily: 'JetBrains Mono, Fira Code, Menlo, Monaco, Consolas, monospace',
           fontSize: '14px',
           lineHeight: '1.6',
         },
         '.cm-content': {
           padding: '16px 0',
+          minHeight: '100%',
         },
         '.cm-line': {
           padding: '0 16px',
@@ -127,6 +133,6 @@ export function CodeEditor({ value, onChange, language, readOnly = false, errorL
   }, [value]);
 
   return (
-    <div ref={containerRef} className="code-editor-wrapper h-full w-full rounded-lg overflow-hidden border border-jajs-cyan/20" />
+    <div ref={containerRef} className="code-editor-wrapper h-full w-full" />
   );
 }

@@ -4,7 +4,7 @@ import { EXAMPLES } from '../data/examples';
 import { usePlaygroundStore } from '../store/playgroundStore';
 
 export function ExampleSelector() {
-  const { selectedExampleId, loadExample } = usePlaygroundStore();
+  const { selectedExampleId, loadExample, compile } = usePlaygroundStore();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -38,6 +38,7 @@ export function ExampleSelector() {
               onClick={() => {
                 loadExample(example.id);
                 setIsOpen(false);
+                setTimeout(() => compile(), 0);
               }}
               className={`w-full text-left px-4 py-3 hover:bg-jajs-cyan/10 transition-colors duration-150 border-b border-jajs-cyan/10 last:border-b-0 ${
                 selectedExampleId === example.id ? 'bg-jajs-cyan/10' : ''
