@@ -52,7 +52,13 @@ export class SymbolTable {
   }
 
   private addBuiltins(): void {
-    const builtinTypes = ['Object', 'String', 'Number', 'Boolean', 'Array', 'Error', 'Console', 'Math', 'Date', 'JSON', 'Map', 'Set', 'Promise'];
+    const builtinTypes = [
+      'Object', 'String', 'Number', 'Boolean', 'Array', 'Error', 'Console',
+      'Math', 'Date', 'JSON', 'Map', 'Set', 'Promise',
+      'Window', 'Document', 'Navigator', 'Location', 'History', 'Storage',
+      'HTMLElement', 'NodeList', 'Event', 'Process', 'Buffer',
+      'Timeout', 'Interval',
+    ];
     for (const name of builtinTypes) {
       this.globalScope.define({
         name,
@@ -61,11 +67,25 @@ export class SymbolTable {
       });
     }
 
-    this.globalScope.define({
-      name: 'console',
-      type: { name: 'Console', isArray: false, isPrimitive: true, isNullable: false },
-      kind: 'variable',
-    });
+    const builtinGlobals: Record<string, string> = {
+      'console': 'Console',
+      'window': 'Window',
+      'document': 'Document',
+      'navigator': 'Navigator',
+      'location': 'Location',
+      'history': 'History',
+      'localStorage': 'Storage',
+      'sessionStorage': 'Storage',
+      'process': 'Process',
+      'global': 'Object',
+    };
+    for (const [name, typeName] of Object.entries(builtinGlobals)) {
+      this.globalScope.define({
+        name,
+        type: { name: typeName, isArray: false, isPrimitive: true, isNullable: false },
+        kind: 'variable',
+      });
+    }
   }
 
   public enterScope(name: string = 'anonymous'): Scope {

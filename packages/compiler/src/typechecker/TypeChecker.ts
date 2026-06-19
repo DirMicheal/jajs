@@ -68,6 +68,38 @@ export class TypeChecker {
         kind: 'variable',
       });
     }
+
+    const globalFunctions: Record<string, { returnType: string; params: { name: string; type: string }[] }> = {
+      'println': { returnType: 'void', params: [{ name: 'msg', type: 'Object' }] },
+      'print': { returnType: 'void', params: [{ name: 'msg', type: 'Object' }] },
+      'alert': { returnType: 'void', params: [{ name: 'msg', type: 'Object' }] },
+      'confirm': { returnType: 'boolean', params: [{ name: 'msg', type: 'Object' }] },
+      'prompt': { returnType: 'String', params: [{ name: 'msg', type: 'Object' }] },
+      'parseInt': { returnType: 'int', params: [{ name: 'str', type: 'String' }] },
+      'parseFloat': { returnType: 'double', params: [{ name: 'str', type: 'String' }] },
+      'isNaN': { returnType: 'boolean', params: [{ name: 'val', type: 'Object' }] },
+      'isFinite': { returnType: 'boolean', params: [{ name: 'val', type: 'Object' }] },
+      'encodeURI': { returnType: 'String', params: [{ name: 'uri', type: 'String' }] },
+      'decodeURI': { returnType: 'String', params: [{ name: 'uri', type: 'String' }] },
+      'setTimeout': { returnType: 'Timeout', params: [{ name: 'callback', type: 'Object' }, { name: 'delay', type: 'int' }] },
+      'setInterval': { returnType: 'Interval', params: [{ name: 'callback', type: 'Object' }, { name: 'delay', type: 'int' }] },
+      'clearTimeout': { returnType: 'void', params: [{ name: 'id', type: 'Timeout' }] },
+      'clearInterval': { returnType: 'void', params: [{ name: 'id', type: 'Interval' }] },
+    };
+    for (const [name, sig] of Object.entries(globalFunctions)) {
+      if (!globalScope.has(name)) {
+        globalScope.define({
+          name,
+          type: createType(sig.returnType, false, true),
+          kind: 'method',
+          modifiers: ['public', 'static'],
+          isStatic: true,
+          parameters: sig.params.map((p) => ({ name: p.name, type: createType(p.type, false, true) })),
+          returnType: createType(sig.returnType, false, true),
+        });
+      }
+    }
+
     for (const decl of ast.declarations) {
       if (decl.type === 'ClassDeclaration') {
         this.classDeclarations.set(decl.name, decl);
@@ -639,6 +671,154 @@ export class TypeChecker {
           return createType('int', false, true);
         }
 
+        const globalObjectMethods: Record<string, Record<string, { returnType: string; params: string[] }>> = {
+          'Window': {
+            'alert': { returnType: 'void', params: ['Object'] },
+            'confirm': { returnType: 'boolean', params: ['Object'] },
+            'prompt': { returnType: 'String', params: ['Object'] },
+            'setTimeout': { returnType: 'Timeout', params: ['Object', 'int'] },
+            'setInterval': { returnType: 'Interval', params: ['Object', 'int'] },
+            'clearTimeout': { returnType: 'void', params: ['Timeout'] },
+            'clearInterval': { returnType: 'void', params: ['Interval'] },
+          },
+          'Document': {
+            'getElementById': { returnType: 'HTMLElement', params: ['String'] },
+            'getElementsByClassName': { returnType: 'NodeList', params: ['String'] },
+            'getElementsByTagName': { returnType: 'NodeList', params: ['String'] },
+            'querySelector': { returnType: 'HTMLElement', params: ['String'] },
+            'querySelectorAll': { returnType: 'NodeList', params: ['String'] },
+            'createElement': { returnType: 'HTMLElement', params: ['String'] },
+            'createTextNode': { returnType: 'HTMLElement', params: ['String'] },
+          },
+          'HTMLElement': {
+            'appendChild': { returnType: 'HTMLElement', params: ['HTMLElement'] },
+            'removeChild': { returnType: 'HTMLElement', params: ['HTMLElement'] },
+            'addEventListener': { returnType: 'void', params: ['String', 'Object'] },
+            'removeEventListener': { returnType: 'void', params: ['String', 'Object'] },
+            'setAttribute': { returnType: 'void', params: ['String', 'String'] },
+            'getAttribute': { returnType: 'String', params: ['String'] },
+            'removeAttribute': { returnType: 'void', params: ['String'] },
+            'hasAttribute': { returnType: 'boolean', params: ['String'] },
+            'click': { returnType: 'void', params: [] },
+            'focus': { returnType: 'void', params: [] },
+            'blur': { returnType: 'void', params: [] },
+          },
+          'Location': {
+            'assign': { returnType: 'void', params: ['String'] },
+            'reload': { returnType: 'void', params: [] },
+            'replace': { returnType: 'void', params: ['String'] },
+          },
+          'History': {
+            'back': { returnType: 'void', params: [] },
+            'forward': { returnType: 'void', params: [] },
+            'go': { returnType: 'void', params: ['int'] },
+            'pushState': { returnType: 'void', params: ['Object', 'String', 'String'] },
+            'replaceState': { returnType: 'void', params: ['Object', 'String', 'String'] },
+          },
+          'Storage': {
+            'getItem': { returnType: 'String', params: ['String'] },
+            'setItem': { returnType: 'void', params: ['String', 'String'] },
+            'removeItem': { returnType: 'void', params: ['String'] },
+            'clear': { returnType: 'void', params: [] },
+            'key': { returnType: 'String', params: ['int'] },
+          },
+          'NodeList': {
+            'item': { returnType: 'HTMLElement', params: ['int'] },
+            'forEach': { returnType: 'void', params: ['Object'] },
+          },
+          'Event': {
+            'preventDefault': { returnType: 'void', params: [] },
+            'stopPropagation': { returnType: 'void', params: [] },
+          },
+          'Process': {
+            'exit': { returnType: 'void', params: ['int'] },
+            'cwd': { returnType: 'String', params: [] },
+            'chdir': { returnType: 'void', params: ['String'] },
+            'nextTick': { returnType: 'void', params: ['Object'] },
+          },
+          'Math': {
+            'abs': { returnType: 'double', params: ['double'] },
+            'ceil': { returnType: 'double', params: ['double'] },
+            'floor': { returnType: 'double', params: ['double'] },
+            'round': { returnType: 'double', params: ['double'] },
+            'max': { returnType: 'double', params: ['double', 'double'] },
+            'min': { returnType: 'double', params: ['double', 'double'] },
+            'pow': { returnType: 'double', params: ['double', 'double'] },
+            'sqrt': { returnType: 'double', params: ['double'] },
+            'random': { returnType: 'double', params: [] },
+            'sin': { returnType: 'double', params: ['double'] },
+            'cos': { returnType: 'double', params: ['double'] },
+            'tan': { returnType: 'double', params: ['double'] },
+            'asin': { returnType: 'double', params: ['double'] },
+            'acos': { returnType: 'double', params: ['double'] },
+            'atan': { returnType: 'double', params: ['double'] },
+            'atan2': { returnType: 'double', params: ['double', 'double'] },
+            'exp': { returnType: 'double', params: ['double'] },
+            'log': { returnType: 'double', params: ['double'] },
+            'sign': { returnType: 'double', params: ['double'] },
+            'trunc': { returnType: 'double', params: ['double'] },
+          },
+          'JSON': {
+            'parse': { returnType: 'Object', params: ['String'] },
+            'stringify': { returnType: 'String', params: ['Object'] },
+          },
+          'Date': {
+            'now': { returnType: 'long', params: [] },
+            'parse': { returnType: 'long', params: ['String'] },
+            'UTC': { returnType: 'long', params: ['int', 'int', 'int'] },
+          },
+          'Console': {
+            'log': { returnType: 'void', params: ['Object'] },
+            'error': { returnType: 'void', params: ['Object'] },
+            'warn': { returnType: 'void', params: ['Object'] },
+            'info': { returnType: 'void', params: ['Object'] },
+            'debug': { returnType: 'void', params: ['Object'] },
+            'trace': { returnType: 'void', params: [] },
+            'clear': { returnType: 'void', params: [] },
+            'table': { returnType: 'void', params: ['Object'] },
+            'dir': { returnType: 'void', params: ['Object'] },
+            'group': { returnType: 'void', params: ['String'] },
+            'groupEnd': { returnType: 'void', params: [] },
+            'time': { returnType: 'void', params: ['String'] },
+            'timeEnd': { returnType: 'void', params: ['String'] },
+            'count': { returnType: 'void', params: ['String'] },
+          },
+        };
+
+        if (node.callee.object.type === 'Identifier') {
+          const objectName = node.callee.object.name;
+          const methods = globalObjectMethods[objectName];
+          if (methods && methods[methodName]) {
+            const sig = methods[methodName];
+            if (node.arguments.length < sig.params.length) {
+              throw new TypeCheckerError(
+                `Method '${objectName}.${methodName}' expects at least ${sig.params.length} arguments, got ${node.arguments.length}`,
+                node.pos.line,
+                node.pos.column,
+              );
+            }
+            for (let i = 0; i < Math.min(node.arguments.length, sig.params.length); i++) {
+              const argType = this.checkExpression(node.arguments[i]);
+              const paramType = createType(sig.params[i], false, true);
+              if (!this.isTypeAssignable(paramType, argType) && !isNumericType(paramType) && !isNumericType(argType)) {
+                throw new TypeCheckerError(
+                  `Argument ${i + 1} of '${objectName}.${methodName}' expects '${this.typeName(paramType)}', got '${this.typeName(argType)}'`,
+                  node.arguments[i].pos.line,
+                  node.arguments[i].pos.column,
+                );
+              }
+            }
+            return createType(sig.returnType, false, true);
+          }
+
+          const objectType = this.checkExpression(node.callee.object);
+          const objMethods = globalObjectMethods[objectType.name];
+          if (objMethods && objMethods[methodName]) {
+            const sig = objMethods[methodName];
+            return createType(sig.returnType, false, true);
+          }
+        }
+
         if (node.callee.object.type === 'Identifier') {
           const className = node.callee.object.name;
           const classSym = this.symbolTable.getGlobalScope().resolve(className);
@@ -718,6 +898,95 @@ export class TypeChecker {
         if (objectType.name === 'Console' || objectType.name === 'System.out') {
           return createType('void', false, true);
         }
+      }
+
+      const globalObjectProps: Record<string, Record<string, string>> = {
+        'Window': {
+          'alert': 'void', 'confirm': 'boolean', 'prompt': 'String',
+          'setTimeout': 'Timeout', 'setInterval': 'Interval',
+          'clearTimeout': 'void', 'clearInterval': 'void',
+          'location': 'Location', 'document': 'Document', 'navigator': 'Navigator',
+          'history': 'History', 'localStorage': 'Storage', 'sessionStorage': 'Storage',
+          'innerWidth': 'int', 'innerHeight': 'int',
+          'scrollX': 'double', 'scrollY': 'double',
+        },
+        'Document': {
+          'getElementById': 'HTMLElement', 'getElementsByClassName': 'NodeList',
+          'getElementsByTagName': 'NodeList', 'querySelector': 'HTMLElement',
+          'querySelectorAll': 'NodeList', 'createElement': 'HTMLElement',
+          'createTextNode': 'HTMLElement', 'body': 'HTMLElement', 'head': 'HTMLElement',
+          'title': 'String', 'URL': 'String', 'cookie': 'String',
+        },
+        'HTMLElement': {
+          'id': 'String', 'className': 'String', 'innerHTML': 'String',
+          'innerText': 'String', 'textContent': 'String', 'style': 'Object',
+          'parentElement': 'HTMLElement', 'children': 'NodeList',
+          'appendChild': 'HTMLElement', 'removeChild': 'HTMLElement',
+          'addEventListener': 'void', 'removeEventListener': 'void',
+          'setAttribute': 'void', 'getAttribute': 'String',
+          'removeAttribute': 'void', 'hasAttribute': 'boolean',
+          'click': 'void', 'focus': 'void', 'blur': 'void',
+        },
+        'Navigator': {
+          'userAgent': 'String', 'language': 'String', 'platform': 'String',
+          'appName': 'String', 'appVersion': 'String', 'cookieEnabled': 'boolean',
+          'onLine': 'boolean', 'geolocation': 'Object',
+        },
+        'Location': {
+          'href': 'String', 'protocol': 'String', 'host': 'String',
+          'hostname': 'String', 'port': 'String', 'pathname': 'String',
+          'search': 'String', 'hash': 'String',
+          'assign': 'void', 'reload': 'void', 'replace': 'void',
+        },
+        'History': {
+          'length': 'int', 'back': 'void', 'forward': 'void', 'go': 'void',
+          'pushState': 'void', 'replaceState': 'void',
+        },
+        'Storage': {
+          'length': 'int', 'getItem': 'String', 'setItem': 'void',
+          'removeItem': 'void', 'clear': 'void', 'key': 'String',
+        },
+        'NodeList': {
+          'length': 'int', 'item': 'HTMLElement', 'forEach': 'void',
+        },
+        'Event': {
+          'type': 'String', 'target': 'HTMLElement', 'currentTarget': 'HTMLElement',
+          'timeStamp': 'double', 'bubbles': 'boolean', 'cancelable': 'boolean',
+          'preventDefault': 'void', 'stopPropagation': 'void',
+        },
+        'Process': {
+          'env': 'Object', 'argv': 'Array', 'exit': 'void',
+          'cwd': 'String', 'chdir': 'void', 'nextTick': 'void',
+          'stdout': 'Object', 'stderr': 'Object', 'stdin': 'Object',
+          'version': 'String', 'versions': 'Object', 'platform': 'String',
+          'arch': 'String', 'pid': 'int', 'title': 'String',
+        },
+        'Math': {
+          'PI': 'double', 'E': 'double', 'LN2': 'double', 'LN10': 'double',
+          'LOG2E': 'double', 'LOG10E': 'double', 'SQRT2': 'double', 'SQRT1_2': 'double',
+          'abs': 'double', 'ceil': 'double', 'floor': 'double', 'round': 'double',
+          'max': 'double', 'min': 'double', 'pow': 'double', 'sqrt': 'double',
+          'random': 'double', 'sin': 'double', 'cos': 'double', 'tan': 'double',
+          'asin': 'double', 'acos': 'double', 'atan': 'double', 'atan2': 'double',
+          'exp': 'double', 'log': 'double', 'sign': 'double', 'trunc': 'double',
+        },
+        'JSON': {
+          'parse': 'Object', 'stringify': 'String',
+        },
+        'Date': {
+          'now': 'long', 'parse': 'long', 'UTC': 'long',
+        },
+        'Console': {
+          'log': 'void', 'error': 'void', 'warn': 'void', 'info': 'void',
+          'debug': 'void', 'trace': 'void', 'clear': 'void',
+          'table': 'void', 'dir': 'void', 'group': 'void', 'groupEnd': 'void',
+          'time': 'void', 'timeEnd': 'void', 'count': 'void',
+        },
+      };
+
+      const typeProps = globalObjectProps[objectType.name];
+      if (typeProps && typeProps[propName]) {
+        return createType(typeProps[propName], false, true);
       }
 
       if (this.currentClass && (node.object.type === 'ThisExpression' || objectType.name === this.currentClass.name)) {

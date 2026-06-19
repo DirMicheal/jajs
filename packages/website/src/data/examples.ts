@@ -184,4 +184,104 @@ public class Dog extends Animal {
     }
 }`,
   },
+  {
+    id: 'dom-manipulation',
+    name: 'DOM 操作',
+    description: '演示 Document 和 Window 全局对象的使用',
+    code: `public class DOMDemo {
+    public static void main(String[] args) {
+        System.out.println("页面标题: " + Document.title);
+        System.out.println("窗口宽度: " + Window.innerWidth);
+        System.out.println("窗口高度: " + Window.innerHeight);
+        
+        HTMLElement body = Document.body;
+        System.out.println("Body 存在: " + (body != null));
+        
+        HTMLElement el = Document.getElementById("myDiv");
+        if (el != null) {
+            el.innerHTML = "<h1>Hello from JaJS!</h1>";
+        }
+    }
+}`,
+  },
+  {
+    id: 'window-methods',
+    name: 'Window 全局方法',
+    description: '演示 alert、prompt、setTimeout 等全局方法',
+    code: `public class WindowDemo {
+    public static void main(String[] args) {
+        alert("Hello from JaJS!");
+        
+        int num = parseInt("42");
+        System.out.println("parseInt('42') = " + num);
+        
+        double pi = Math.PI;
+        System.out.println("PI = " + pi);
+        
+        double sqrt = Math.sqrt(16);
+        System.out.println("sqrt(16) = " + sqrt);
+        
+        double random = Math.random();
+        System.out.println("random = " + random);
+        
+        String json = JSON.stringify("hello");
+        System.out.println("JSON: " + json);
+        
+        long now = Date.now();
+        System.out.println("timestamp: " + now);
+    }
+}`,
+  },
+  {
+    id: 'math-json',
+    name: 'Math 和 JSON',
+    description: '演示内置 Math 和 JSON 对象的使用',
+    code: `public class MathJSONDemo {
+    public static void main(String[] args) {
+        double x = 2.5;
+        double y = 3.7;
+        
+        System.out.println("max(" + x + ", " + y + ") = " + Math.max(x, y));
+        System.out.println("min(" + x + ", " + y + ") = " + Math.min(x, y));
+        System.out.println("pow(" + x + ", 2) = " + Math.pow(x, 2));
+        System.out.println("ceil(" + x + ") = " + Math.ceil(x));
+        System.out.println("floor(" + y + ") = " + Math.floor(y));
+        System.out.println("round(" + x + ") = " + Math.round(x));
+        System.out.println("abs(-5) = " + Math.abs(-5));
+        
+        int[] nums = {1, 2, 3, 4, 5};
+        String jsonStr = JSON.stringify(nums);
+        System.out.println("序列化数组: " + jsonStr);
+    }
+}`,
+  },
+  {
+    id: 'global-functions',
+    name: '全局函数',
+    description: '演示 parseInt、parseFloat、isNaN 等全局函数的使用',
+    code: `public class GlobalFunctionsDemo {
+    public static void main(String[] args) {
+        int i = parseInt("123");
+        System.out.println("parseInt('123') = " + i);
+        
+        double d = parseFloat("3.14");
+        System.out.println("parseFloat('3.14') = " + d);
+        
+        boolean nan = isNaN(0.0 / 0.0);
+        System.out.println("isNaN(0/0) = " + nan);
+        
+        boolean finite = isFinite(100);
+        System.out.println("isFinite(100) = " + finite);
+        
+        String url = "https://example.com/path?q=hello world";
+        String encoded = encodeURI(url);
+        System.out.println("encodeURI: " + encoded);
+        
+        String decoded = decodeURI(encoded);
+        System.out.println("decodeURI: " + decoded);
+        
+        println("使用 println 全局函数输出");
+    }
+}`,
+  },
 ];

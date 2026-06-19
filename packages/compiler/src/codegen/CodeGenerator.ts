@@ -69,11 +69,29 @@ export class CodeGenerator {
       this.emitLine('');
     }
 
+    let mainClass: string | null = null;
     for (const decl of ast.declarations) {
       if (decl.type === 'ClassDeclaration') {
         this.generateClass(decl);
         this.emitLine('');
+        if (!mainClass) {
+          for (const member of decl.members) {
+            if (member.type === 'MethodDeclaration' && member.name === 'main' && member.isStatic) {
+              mainClass = decl.name;
+              break;
+            }
+          }
+        }
       }
+    }
+
+    if (mainClass) {
+      this.emitLine('');
+      this.emitLine('(function() {');
+      this.indentLevel++;
+      this.emitLine(`try { ${mainClass}.main([]); } catch(e) { console.error(e); }`);
+      this.indentLevel--;
+      this.emitLine('})();');
     }
 
     return this.output.join('\n');
@@ -456,6 +474,35 @@ export class CodeGenerator {
       if (object === 'System' && propName === 'out') {
         return 'console';
       }
+
+      const globalObjectMap: Record<string, string> = {
+        'Window': 'window',
+        'Document': 'document',
+        'Navigator': 'navigator',
+        'Location': 'location',
+        'History': 'history',
+        'Storage': 'Storage',
+        'HTMLElement': 'HTMLElement',
+        'NodeList': 'NodeList',
+        'Event': 'Event',
+        'Process': 'process',
+        'Buffer': 'Buffer',
+        'Math': 'Math',
+        'JSON': 'JSON',
+        'Date': 'Date',
+        'Console': 'console',
+        'Map': 'Map',
+        'Set': 'Set',
+        'Promise': 'Promise',
+        'Timeout': 'Timeout',
+        'Interval': 'Interval',
+      };
+
+      const mappedObject = globalObjectMap[object];
+      if (mappedObject) {
+        return `${mappedObject}.${propName}`;
+      }
+
       return `${object}.${propName}`;
     }
     const index = this.generateExpression(node.property);
